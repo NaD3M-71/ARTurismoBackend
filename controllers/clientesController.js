@@ -71,6 +71,18 @@ exports.mostrarClientes = async(req,res) =>{
         //next();
     }
 }
+exports.mostrarClientesPorCiudad = async(req,res) =>{
+    try {
+        const ciudadNombre = req.params.ciudadNombre;
+        console.log(ciudadNombre);
+        const clientes = await Clientes.find({ciudad: ciudadNombre});
+        res.json(clientes)
+        
+    } catch (error) {
+        console.log(error);
+        //next();
+    }
+}
 
 exports.mostrarCliente = async (req,res,next) =>{
     const cliente = await Clientes.findById(req.params.idCliente);
@@ -99,44 +111,38 @@ exports.buscarCliente = async (req,res,next)=>{
 
 exports.actualizarCliente = async (req, res, next) => {
     try {
-        // Buscar el cliente en la base de datos
-        let clienteAnterior = await Clientes.findById(req.params.idCliente);
+        const clienteAnterior = await Clientes.findById(req.params.idCliente);
         if (!clienteAnterior) {
             return res.status(404).json({ mensaje: 'Cliente no encontrado' });
         }
 
-        // Construir el nuevo objeto del cliente
-        let nuevoCliente = req.body;
+        const nuevoCliente = req.body;
 
-        // Si hay imágenes nuevas
+        // Partimos de las imágenes actuales
+        let imagenes = clienteAnterior.imagen || [];
+
+        // Si llegan imágenes nuevas, las agregamos
         if (req.files && req.files.length > 0) {
-            // Guardar las nuevas imágenes
-            nuevoCliente.imagen = req.files.map(file => file.path);
-
-            // Eliminar imágenes antiguas del servidor
-            if (clienteAnterior.imagen && clienteAnterior.imagen.length > 0) {
-                clienteAnterior.imagen.forEach(imagen => {
-                    const imagenAnteriorPath = path.join(__dirname, '..', imagen);
-                    unlink(imagenAnteriorPath, (error) => {
-                        if (error) console.log(`Error al eliminar ${imagenAnteriorPath}:`, error);
-                    });
-                });
-            }
-        } else {
-            // Mantener las imágenes antiguas
-            nuevoCliente.imagen = clienteAnterior.imagen;
+            const nuevasImagenes = req.files.map(file => file.filename);
+            imagenes = [...imagenes, ...nuevasImagenes];
         }
 
-        // Actualizar cliente en la base de datos
-        let cliente = await Clientes.findByIdAndUpdate(req.params.idCliente, nuevoCliente, {
-            new: true, // Devuelve el cliente actualizado
-        });
+        nuevoCliente.imagen = imagenes;
 
-        res.json({ mensaje: 'Se ha actualizado la información del cliente', cliente });
+        const cliente = await Clientes.findByIdAndUpdate(
+            req.params.idCliente,
+            nuevoCliente,
+            { new: true }
+        );
+
+        res.json({
+            mensaje: 'Cliente actualizado correctamente',
+            cliente
+        });
 
     } catch (error) {
         console.error(error);
-        next();
+        next(error);
     }
 };
 
@@ -188,3 +194,41 @@ exports.eliminarCliente = async (req, res, next) => {
         next(error);
     }
 };
+
+
+/* Eliminar imagen del cliente por separado */
+exports.eliminarImagenCliente = async (req, res, next) => {
+  try {
+    const { idCliente } = req.params;
+    const { nombreImagen } = req.body;
+
+    const cliente = await Clientes.findById(idCliente);
+    if (!cliente) {
+      return res.status(404).json({ mensaje: 'Cliente no encontrado' });
+    }
+
+    // Verificar que la imagen exista en el cliente
+    if (!cliente.imagen.includes(nombreImagen)) {
+      return res.status(400).json({ mensaje: 'La imagen no pertenece al cliente' });
+    }
+
+    // Eliminar imagen del array
+    cliente.imagen = cliente.imagen.filter(img => img !== nombreImagen);
+
+    // Eliminar archivo físico
+    const imagenPath = path.join(__dirname, '../uploads', nombreImagen);
+    fs.unlink(imagenPath, err => {
+      if (err) console.error('Error eliminando imagen:', err);
+    });
+
+    await cliente.save();
+
+    res.json({ mensaje: 'Imagen eliminada correctamente', imagen: cliente.imagen });
+
+  } catch (error) {
+    console.error(error);
+    next();
+  }
+};
+
+

@@ -53,6 +53,9 @@ module.exports = function(){
     //mostrar cliente
     router.get('/clientes/:idCliente', clientesController.mostrarCliente)
 
+    //mostrar clientes por ciudad
+    router.get('/clientes/ciudad/:ciudadNombre', clientesController.mostrarClientesPorCiudad)
+   
     //actualizar Cliente
     router.put('/clientes/:idCliente', 
       clientesController.subirArchivo,
@@ -60,7 +63,9 @@ module.exports = function(){
     )
 
     //Eliminar Cliente
-    router.delete('/clientes/:idCliente', clientesController.eliminarCliente)
+    router.delete('/clientes/:idCliente', clientesController.eliminarCliente);
+    // Eliminar imagen del cliente
+    router.delete('/clientes/:idCliente/imagen', clientesController.eliminarImagenCliente);
 
     return router;
 }
