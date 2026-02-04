@@ -7,9 +7,9 @@ require('dotenv').config({path:'variables.env'});
 const cors = require('cors');
 const path = require('path');
 
-const {DB_CONNECTION,SERVER_PORT,FRONTEND_URL} = process.env
+const {DB_CONNECTION,PORT,FRONTEND_URL} = process.env
 
-
+const port = process.env.PORT || 5000;
 //conexion a la DB
 mongoose.Promise = global.Promise;
 mongoose.connect(DB_CONNECTION)
@@ -23,21 +23,21 @@ const app = express();
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended:true}))
 
-// const whitelist = [FRONTEND_URL];
-// const corsOptions = {
-//     origin: (origin, callback) =>{
-//         // Revisar si la peticion viene de un server en la whitelist
-//         const existe = whitelist.some( dominio => dominio === origin );
-//         if(existe){
-//             callback(null,true)
-//         } else {
-//             callback(new Error('Error de CORS'))
-//         }
-//     }
-// }
+const whitelist = [FRONTEND_URL];
+const corsOptions = {
+    origin: (origin, callback) =>{
+        // Revisar si la peticion viene de un server en la whitelist
+        const existe = whitelist.some( dominio => dominio === origin );
+        if(existe){
+            callback(null,true)
+        } else {
+            callback(new Error('Error de CORS'))
+        }
+    }
+}
 
 // Habilitar cors
-app.use(cors());
+app.use(cors(corsOptions));
 
 // Routing de la app
 app.use('/', routes());
@@ -46,5 +46,7 @@ app.use('/', routes());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // puerto
-app.listen(SERVER_PORT)
+app.listen(port || 5000, ()=>{
+  console.log(`App listening on p ${port}`);
+})
 
