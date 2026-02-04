@@ -9,7 +9,7 @@ const path = require('path');
 
 const {DB_CONNECTION,PORT,FRONTEND_URL} = process.env
 
-const port = process.env.PORT || 5000;
+const port = PORT || 5000;
 //conexion a la DB
 mongoose.Promise = global.Promise;
 mongoose.connect(DB_CONNECTION)
@@ -23,21 +23,26 @@ const app = express();
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended:true}))
 
-const whitelist = [FRONTEND_URL];
-const corsOptions = {
-    origin: (origin, callback) =>{
-        // Revisar si la peticion viene de un server en la whitelist
-        const existe = whitelist.some( dominio => dominio === origin );
-        if(existe){
-            callback(null,true)
-        } else {
-            callback(new Error('Error de CORS'))
-        }
-    }
-}
+// const whitelist = [FRONTEND_URL];
+// const corsOptions = {
+//     origin: (origin, callback) =>{
+//         // Revisar si la peticion viene de un server en la whitelist
+//         const existe = whitelist.some( dominio => dominio === origin );
+//         if(existe){
+//             callback(null,true)
+//         } else {
+//             callback(new Error('Error de CORS'))
+//         }
+//     }
+// }
 
 // Habilitar cors
-app.use(cors(corsOptions));
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE'],
+    credentials: true
+  })
+);
 
 // Routing de la app
 app.use('/', routes());
