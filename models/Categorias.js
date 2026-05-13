@@ -5,7 +5,10 @@ const categoriasPrincipales = [
     'Gastronomia',
     'Hospedaje',
     'Entretenimiento',
-    'Mercados'
+    'Mercados',
+    'Vida Nocturna',
+    'Punto de Interes',
+    'Otro'
 ]
 
 const categoriasSchema = new Schema({

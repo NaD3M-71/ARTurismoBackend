@@ -52,6 +52,10 @@ const clientesSchema = new Schema({
         type: String,
         trim: true
     },
+    descripcionCorta:{
+        type: String,
+        required: [true, "La descripcion es obligatoria"]
+    },
     descripcion:{
         type: String,
         required: [true, "La descripcion es obligatoria"]
