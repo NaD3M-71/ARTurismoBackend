@@ -11,6 +11,7 @@
   "author": "Giuliano Scaglioni GSCODE",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -19,6 +20,7 @@
     "mongoose": "^8.9.0",
     "multer": "^1.4.5-lts.1",
     "nanoid": "^3.3.8",
+    "nodemailer": "^8.0.10",
     "swiper": "^11.2.4"
   },
   "devDependencies": {

@@ -1,30 +1,28 @@
 const mongoose = require('mongoose');
-const Schema= mongoose.Schema;
+const Schema = mongoose.Schema;
 
-const categoriasPrincipales = [
-    'Gastronomia',
-    'Hospedaje',
-    'Entretenimiento',
-    'Mercados',
-    'Vida Nocturna',
-    'Punto de Interes',
-    'Otro'
-]
+const GRUPOS = ['Gastronomía', 'Alojamiento', 'Transportes', 'Vida Nocturna','Actividades','Otros'];
 
 const categoriasSchema = new Schema({
-    principal:{
+    nombre: {
+        type: String,
+        trim: true,
+        required: [true, 'El nombre de la categoría es obligatorio'],
+        unique: true,
+    },
+    grupo: {
         type: String,
         enum: {
-            values: categoriasPrincipales,
-            message: 'La categoria principal seleccionada no es válida',
-          },
-        required: [true, 'La categoria principal es obligatoria'],
+            values: GRUPOS,
+            message: 'El grupo seleccionado no es válido',
+        },
+        required: [true, 'El grupo es obligatorio'],
     },
-    subcategoria:{
-        type: String,
-        unique,
-        
-    }
+    activa: {
+        type: Boolean,
+        default: true,
+    },
 });
 
-module.exports = mongoose.model('Categorias', categoriasSchema );
+module.exports = mongoose.model('Categorias', categoriasSchema);
+module.exports.GRUPOS = GRUPOS;

@@ -1,33 +1,54 @@
 const Clientes = require('../models/Clientes.js');
-const { unlink } =require('fs');
+const { unlink } = require('fs');
 const multer = require('multer');
 const fs = require('fs');
-const {nanoid} = require('nanoid');
+const { nanoid } = require('nanoid');
 const path = require('path');
+
+
+function sanitizarNombre(str) {
+    return (str || '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .trim();
+}
+
+function getExt(mimetype) {
+    const ext = mimetype.split('/')[1];
+    return ext === 'jpeg' ? 'jpg' : ext;
+}
+
+// Busca el mayor número de foto ya existente para este proveedor/ciudad y devuelve el siguiente
+function siguienteNumero(imagenes, nombre, ciudad) {
+    const pattern = new RegExp(`^${nombre}-${ciudad}-(\\d+)\\..+$`);
+    const nums = imagenes
+        .map(img => { const m = pattern.exec(img); return m ? parseInt(m[1]) : 0; })
+        .filter(n => n > 0);
+    return nums.length > 0 ? Math.max(...nums) + 1 : 1;
+}
 
 
 // config de multer
 const configuracionMulter = {
-    storage: fileStorage = multer.diskStorage({
+    storage: multer.diskStorage({
         destination: (req, file, cb) => {
-            cb(null, __dirname + '../../uploads/');
+            cb(null, path.join(__dirname, '..', 'uploads'));
         },
         filename: (req, file, cb) => {
-            const extension = file.mimetype.split('/')[1];
-            cb(null, `${nanoid()}.${extension}`);
+            cb(null, `${nanoid()}.${getExt(file.mimetype)}`);
         }
     }),
     fileFilter(req, file, cb) {
-        if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'|| file.mimetype === 'image/gif') {
+        if (['image/jpeg', 'image/png', 'image/gif'].includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('Formato no válido'))
+            cb(new Error('Formato no válido'));
         }
     }
 }
 
 // Pasar la configuración y el campo
-const upload = multer(configuracionMulter).array('imagen',5);
+const upload = multer(configuracionMulter).array('imagen', 5);
 
 // Subir archivo
 exports.subirArchivo = (req, res, next) => {
@@ -43,15 +64,21 @@ exports.subirArchivo = (req, res, next) => {
 // agrega una nueva ciudad
 exports.agregarCliente = async (req, res, next) => {
     const cliente = new Clientes(req.body);
+    console.log(cliente);
 
     try {
-        // Si se suben archivos, asignamos las rutas relativas
         if (req.files && req.files.length > 0) {
-            cliente.imagen = req.files.map(file => `${path.basename(file.path)}`);
-            
+            const nombre = sanitizarNombre(req.body.nombre);
+            const ciudad = sanitizarNombre(req.body.ciudad);
+            const carpeta = path.join(__dirname, '..', 'uploads');
+
+            cliente.imagen = req.files.map((file, i) => {
+                const nuevoNombre = `${nombre}-${ciudad}-${i + 1}.${getExt(file.mimetype)}`;
+                fs.renameSync(path.join(carpeta, file.filename), path.join(carpeta, nuevoNombre));
+                return nuevoNombre;
+            });
         }
 
-        // Guardar el cliente en la base de datos
         await cliente.save();
         res.json({ mensaje: 'Cliente agregado correctamente' });
 
@@ -61,46 +88,43 @@ exports.agregarCliente = async (req, res, next) => {
     }
 }
 
-exports.mostrarClientes = async(req,res) =>{
+exports.mostrarClientes = async (req, res) => {
     try {
         const clientes = await Clientes.find({});
         res.json(clientes)
-        
+
     } catch (error) {
         console.log(error);
-        //next();
     }
 }
-exports.mostrarClientesPorCiudad = async(req,res) =>{
+exports.mostrarClientesPorCiudad = async (req, res) => {
     try {
         const ciudadNombre = req.params.ciudadNombre;
         console.log(ciudadNombre);
-        const clientes = await Clientes.find({ciudad: ciudadNombre});
+        const clientes = await Clientes.find({ ciudad: ciudadNombre });
         res.json(clientes)
-        
+
     } catch (error) {
         console.log(error);
-        //next();
     }
 }
 
-exports.mostrarCliente = async (req,res,next) =>{
-    const cliente = await Clientes.findById(req.params.idCliente);
-
-    if(!cliente){
-        res.json({mensaje:'No se encuentra esta cliente'});
-        return next();
-    };
-    // mostrar producto
-    res.json(cliente);
-        
+exports.mostrarCliente = async (req, res) => {
+    try {
+        const cliente = await Clientes.findById(req.params.idCliente);
+        if (!cliente) {
+            return res.status(404).json({ mensaje: 'No se encuentra este cliente' });
+        }
+        res.json(cliente);
+    } catch (error) {
+        return res.status(404).json({ mensaje: 'No se encuentra este cliente' });
+    }
 }
 
-exports.buscarCliente = async (req,res,next)=>{
+exports.buscarCliente = async (req, res, next) => {
     try {
-        // obtener el query
         const { query } = req.params;
-        const cliente = await Clientes.find({ nombre: new RegExp(query, 'i')});
+        const cliente = await Clientes.find({ nombre: new RegExp(query, 'i') });
         res.json(cliente);
     } catch (error) {
         console.log(error);
@@ -117,13 +141,19 @@ exports.actualizarCliente = async (req, res, next) => {
         }
 
         const nuevoCliente = req.body;
-
-        // Partimos de las imágenes actuales
         let imagenes = clienteAnterior.imagen || [];
 
-        // Si llegan imágenes nuevas, las agregamos
         if (req.files && req.files.length > 0) {
-            const nuevasImagenes = req.files.map(file => file.filename);
+            const nombre = sanitizarNombre(req.body.nombre || clienteAnterior.nombre);
+            const ciudad = sanitizarNombre(req.body.ciudad || clienteAnterior.ciudad);
+            const carpeta = path.join(__dirname, '..', 'uploads');
+            let nextNum = siguienteNumero(imagenes, nombre, ciudad);
+
+            const nuevasImagenes = req.files.map((file) => {
+                const nuevoNombre = `${nombre}-${ciudad}-${nextNum++}.${getExt(file.mimetype)}`;
+                fs.renameSync(path.join(carpeta, file.filename), path.join(carpeta, nuevoNombre));
+                return nuevoNombre;
+            });
             imagenes = [...imagenes, ...nuevasImagenes];
         }
 
@@ -149,26 +179,21 @@ exports.actualizarCliente = async (req, res, next) => {
 
 exports.eliminarCliente = async (req, res, next) => {
     try {
-        // Buscar el cliente antes de eliminarlo
         const cliente = await Clientes.findById(req.params.idCliente);
         if (!cliente) {
             return res.status(404).json({ mensaje: 'Cliente no encontrado' });
         }
 
-        // Eliminar imágenes del servidor si existen
         if (cliente.imagen) {
-            // Si la imagen es un array, lo recorremos, si es string, lo convertimos en array
             const imagenes = Array.isArray(cliente.imagen) ? cliente.imagen : [cliente.imagen];
 
             imagenes.forEach(imagen => {
                 let imagenPath = imagen;
 
-                // Si la ruta de la imagen NO es absoluta, la construimos con path.join
                 if (!path.isAbsolute(imagen)) {
                     imagenPath = path.join(__dirname, '..', 'uploads', imagen);
                 }
 
-                // Verificamos si la imagen realmente existe antes de eliminarla
                 if (fs.existsSync(imagenPath)) {
                     fs.unlink(imagenPath, (error) => {
                         if (error) {
@@ -183,7 +208,6 @@ exports.eliminarCliente = async (req, res, next) => {
             });
         }
 
-        // Eliminar cliente de la base de datos
         await Clientes.findByIdAndDelete(req.params.idCliente);
 
         res.json({ mensaje: 'Cliente eliminado correctamente' });
@@ -198,37 +222,32 @@ exports.eliminarCliente = async (req, res, next) => {
 
 /* Eliminar imagen del cliente por separado */
 exports.eliminarImagenCliente = async (req, res, next) => {
-  try {
-    const { idCliente } = req.params;
-    const { nombreImagen } = req.body;
+    try {
+        const { idCliente } = req.params;
+        const { nombreImagen } = req.body;
 
-    const cliente = await Clientes.findById(idCliente);
-    if (!cliente) {
-      return res.status(404).json({ mensaje: 'Cliente no encontrado' });
+        const cliente = await Clientes.findById(idCliente);
+        if (!cliente) {
+            return res.status(404).json({ mensaje: 'Cliente no encontrado' });
+        }
+
+        if (!cliente.imagen.includes(nombreImagen)) {
+            return res.status(400).json({ mensaje: 'La imagen no pertenece al cliente' });
+        }
+
+        cliente.imagen = cliente.imagen.filter(img => img !== nombreImagen);
+
+        const imagenPath = path.join(__dirname, '../uploads', nombreImagen);
+        fs.unlink(imagenPath, err => {
+            if (err) console.error('Error eliminando imagen:', err);
+        });
+
+        await cliente.save();
+
+        res.json({ mensaje: 'Imagen eliminada correctamente', imagen: cliente.imagen });
+
+    } catch (error) {
+        console.error(error);
+        next();
     }
-
-    // Verificar que la imagen exista en el cliente
-    if (!cliente.imagen.includes(nombreImagen)) {
-      return res.status(400).json({ mensaje: 'La imagen no pertenece al cliente' });
-    }
-
-    // Eliminar imagen del array
-    cliente.imagen = cliente.imagen.filter(img => img !== nombreImagen);
-
-    // Eliminar archivo físico
-    const imagenPath = path.join(__dirname, '../uploads', nombreImagen);
-    fs.unlink(imagenPath, err => {
-      if (err) console.error('Error eliminando imagen:', err);
-    });
-
-    await cliente.save();
-
-    res.json({ mensaje: 'Imagen eliminada correctamente', imagen: cliente.imagen });
-
-  } catch (error) {
-    console.error(error);
-    next();
-  }
 };
-
-

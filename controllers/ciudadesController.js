@@ -1,18 +1,30 @@
 const Ciudades = require('../models/Ciudades.js');
-const { unlink } =require('fs');
+const { unlink } = require('fs');
 const multer = require('multer');
 const fs = require('fs');
-const {nanoid} = require('nanoid');
+const { nanoid } = require('nanoid');
+const path = require('path');
+
+function sanitizarNombre(str) {
+    return (str || '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .trim();
+}
+
+function getExt(mimetype) {
+    const ext = mimetype.split('/')[1];
+    return ext === 'jpeg' ? 'jpg' : ext;
+}
 
 // config de multer
 const configuracionMulter = {
-    storage: fileStorage = multer.diskStorage({
+    storage: multer.diskStorage({
         destination: (req, file, cb) => {
-            cb(null, __dirname + '../../uploads/');
+            cb(null, path.join(__dirname, '..', 'uploads'));
         },
         filename: (req, file, cb) => {
-            const extension = file.mimetype.split('/')[1];
-            cb(null, `${nanoid()}.${extension}`);
+            cb(null, `${nanoid()}.${getExt(file.mimetype)}`);
         }
     }),
     fileFilter(req, file, cb) {
@@ -39,49 +51,53 @@ exports.subirArchivo = (req, res, next) => {
 
 
 // agrega una nueva ciudad
-exports.agregarCiudad = async (req,res,next) =>{
+exports.agregarCiudad = async (req, res, next) => {
     const ciudad = new Ciudades(req.body);
 
     try {
-        if(req.file.filename){
-            ciudad.imagen = req.file.filename
+        if (req.file) {
+            const ext = getExt(req.file.mimetype);
+            const nombreCiudad = sanitizarNombre(req.body.nombre);
+            const nuevoNombre = `Banner-${nombreCiudad}.${ext}`;
+            const carpeta = path.join(__dirname, '..', 'uploads');
+            fs.renameSync(path.join(carpeta, req.file.filename), path.join(carpeta, nuevoNombre));
+            ciudad.imagen = nuevoNombre;
         }
         await ciudad.save();
-        res.json({mensaje: 'Ciudad agregada correctamente'})
-    } catch (error){
-        console.log(error);
-        next();
-    }
-}
-
-exports.mostrarCiudades = async(req,res) =>{
-    try {
-        const ciudades = await Ciudades.find({});
-        res.json(ciudades)
-        
+        res.json({ mensaje: 'Ciudad agregada correctamente' })
     } catch (error) {
         console.log(error);
         next();
     }
 }
 
-exports.mostrarCiudad = async (req,res,next) =>{
-    const ciudad = await Ciudades.findById(req.params.ciudadId);
+exports.mostrarCiudades = async (req, res) => {
+    try {
+        const ciudades = await Ciudades.find({});
+        res.json(ciudades)
 
-    if(!ciudad){
-        res.json({mensaje:'No se encuentra esta ciudad'});
-        return next();
-    };
-    // mostrar producto
-    res.json(ciudad);
-        
+    } catch (error) {
+        console.log(error);
+        next();
+    }
 }
 
-exports.buscarCiudad = async (req,res,next)=>{
+exports.mostrarCiudad = async (req, res) => {
     try {
-        // obtener el query
+        const ciudad = await Ciudades.findById(req.params.ciudadId);
+        if (!ciudad) {
+            return res.status(404).json({ mensaje: 'No se encuentra esta ciudad' });
+        }
+        res.json(ciudad);
+    } catch (error) {
+        return res.status(404).json({ mensaje: 'No se encuentra esta ciudad' });
+    }
+}
+
+exports.buscarCiudad = async (req, res, next) => {
+    try {
         const { query } = req.params;
-        const ciudad = await Ciudades.find({ nombre: new RegExp(query, 'i')});
+        const ciudad = await Ciudades.find({ nombre: new RegExp(query, 'i') });
         res.json(ciudad);
     } catch (error) {
         console.log(error);
@@ -90,34 +106,36 @@ exports.buscarCiudad = async (req,res,next)=>{
 }
 
 
-exports.actualizarCiudad = async (req,res,next) =>{
+exports.actualizarCiudad = async (req, res, next) => {
     try {
-        // seleccionar producto
         let ciudadAnterior = await Ciudades.findById(req.params.idCiudad);
-
-        //construir nuevo producto
         let nuevaCiudad = req.body;
 
-        //verificar si hay imagen nueva
-        if(req.file){
-            nuevaCiudad.imagen = req.file.filename;
-            const imagenAnteriorPath = __dirname+`/../uploads/${ciudadAnterior.imagen}`
+        if (req.file) {
+            const ext = getExt(req.file.mimetype);
+            const nombreCiudad = sanitizarNombre(req.body.nombre || ciudadAnterior.nombre);
+            const nuevoNombre = `Banner-${nombreCiudad}.${ext}`;
+            const carpeta = path.join(__dirname, '..', 'uploads');
+
+            // Borrar imagen anterior
+            const imagenAnteriorPath = path.join(carpeta, ciudadAnterior.imagen);
             unlink(imagenAnteriorPath, (error) => {
-                if (error) {
-                return console.log(error)
-                }
-            })
+                if (error) console.log(error);
+            });
+
+            // Renombrar nueva imagen
+            fs.renameSync(path.join(carpeta, req.file.filename), path.join(carpeta, nuevoNombre));
+            nuevaCiudad.imagen = nuevoNombre;
         } else {
             nuevaCiudad.imagen = ciudadAnterior.imagen;
         }
 
-        let ciudad = await Ciudades.findOneAndUpdate({_id: req.params.idCiudad}, nuevaCiudad,{
+        let ciudad = await Ciudades.findOneAndUpdate({ _id: req.params.idCiudad }, nuevaCiudad, {
             new: true,
         });
-        
-        // mostrar producto
-        await res.json({mensaje:'Se ha actualizado la informacion de esta ciudad',ciudad})
-            
+
+        await res.json({ mensaje: 'Se ha actualizado la informacion de esta ciudad', ciudad })
+
     } catch (error) {
         console.log(error);
         next();
@@ -127,16 +145,12 @@ exports.actualizarCiudad = async (req,res,next) =>{
 
 
 // Eliminar Ciudad
-exports.eliminarCiudad = async (req,res,next) =>{
+exports.eliminarCiudad = async (req, res, next) => {
     try {
-        await Ciudades.findOneAndDelete({ _id: req.params.idCiudad});
-        
-        res.json({mensaje: 'Ciudad Eliminada'})
+        await Ciudades.findOneAndDelete({ _id: req.params.idCiudad });
+
+        res.json({ mensaje: 'Ciudad Eliminada' })
     } catch (error) {
         console.log(error);
     }
-
-
-    // mostrar mensaje
-        
 }

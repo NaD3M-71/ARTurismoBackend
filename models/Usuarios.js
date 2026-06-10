@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 const Schema= mongoose.Schema;
 
 const roles = [
@@ -33,6 +34,19 @@ const usuariosSchema = new Schema({
     }
 });
 
-module.exports = mongoose.model('Usuarios', usuariosSchema );
+usuariosSchema.pre('save', async function(next) {
+    if (!this.isModified('password')) return next();
+    try {
+        const hashedPassword = await bcrypt.hash(this.password, 10);
+        this.password = hashedPassword;
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
 
-// 23 32 65 4
+usuariosSchema.methods.compararPassword = async function(passwordIngresada) {
+    return await bcrypt.compare(passwordIngresada, this.password);
+};
+
+module.exports = mongoose.model('Usuarios', usuariosSchema );

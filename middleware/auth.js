@@ -1,30 +1,34 @@
 const jwt = require('jsonwebtoken');
 
-
-module.exports = (req,res,next) =>{
-    // autorizacion mediante el header
+module.exports = (req, res, next) => {
     const authHeader = req.get('Authorization');
 
-    if(!authHeader) {
-        const error = new Error('no autenticado, no hay JWT');
-        error.statusCode = 401;
-        throw error;
-    }
-    // obtener token y verificar
-    const token = authHeader.split(' ')[1];
-    let revisarToken;
-    try {
-        revisarToken = jwt.verify(token, process.env.SECRETKEY)
-    } catch (error) {
-        error.statusCode = 500
-        throw error;
-    }
-    // Si el token es valido pero hay errores
-    if(!revisarToken){
-        const error = new Error('No autenticado');
-        error.statusCode = 401;
-        throw error;
+    if (!authHeader) {
+        return res.status(401).json({
+            mensaje: 'No autenticado, no hay JWT'
+        });
     }
 
-    next();
-}
+    const token = authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({
+            mensaje: 'No autenticado, token inválido'
+        });
+    }
+
+    try {
+        const revisarToken = jwt.verify(token, process.env.SECRETKEY);
+        req.user = revisarToken;
+        next();
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                mensaje: 'Token expirado'
+            });
+        }
+        return res.status(401).json({
+            mensaje: 'Token inválido'
+        });
+    }
+};
