@@ -88,22 +88,35 @@ exports.agregarCliente = async (req, res, next) => {
     }
 }
 
+const TIER_ORDER = [
+    { case: { $eq: ["$tier", "III"] }, then: 0 },
+    { case: { $eq: ["$tier", "II"] }, then: 1 },
+    { case: { $eq: ["$tier", "I"] }, then: 2 },
+];
+
 exports.mostrarClientes = async (req, res) => {
     try {
-        const clientes = await Clientes.find({});
-        res.json(clientes)
-
+        const clientes = await Clientes.aggregate([
+            { $addFields: { tierOrder: { $switch: { branches: TIER_ORDER, default: 3 } } } },
+            { $sort: { tierOrder: 1 } },
+            { $project: { tierOrder: 0 } }
+        ]);
+        res.json(clientes);
     } catch (error) {
         console.log(error);
     }
 }
+
 exports.mostrarClientesPorCiudad = async (req, res) => {
     try {
         const ciudadNombre = req.params.ciudadNombre;
-        console.log(ciudadNombre);
-        const clientes = await Clientes.find({ ciudad: ciudadNombre });
-        res.json(clientes)
-
+        const clientes = await Clientes.aggregate([
+            { $match: { ciudad: ciudadNombre } },
+            { $addFields: { tierOrder: { $switch: { branches: TIER_ORDER, default: 3 } } } },
+            { $sort: { tierOrder: 1 } },
+            { $project: { tierOrder: 0 } }
+        ]);
+        res.json(clientes);
     } catch (error) {
         console.log(error);
     }

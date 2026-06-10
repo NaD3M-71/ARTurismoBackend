@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-const GRUPOS = ['Gastronomía', 'Alojamiento', 'Transportes', 'Vida Nocturna','Actividades','Otros'];
+const GRUPOS = ['Gastronomía', 'Alojamiento', 'Transportes', 'Vida Nocturna', 'Atractivos', 'Servicios', 'Otros'];
 
 const categoriasSchema = new Schema({
     nombre: {

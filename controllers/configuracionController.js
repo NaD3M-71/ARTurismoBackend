@@ -6,6 +6,18 @@ const { nanoid } = require('nanoid');
 
 const CLAVE_BANNER = 'banner_index';
 
+const CLAVES_TEXTOS = {
+    titulo_banner: 'texto_banner_principal',
+    aboutus_titulo: 'texto_aboutus_titulo',
+    aboutus_cuerpo: 'texto_aboutus_cuerpo'
+};
+
+const DEFAULTS_TEXTOS = {
+    titulo_banner: 'Recorré Argentina de la mejor manera!',
+    aboutus_titulo: 'TU AVENTURA EMPIEZA AQUÍ',
+    aboutus_cuerpo: 'Somos el gran puente entre los viajeros y los mejores servicios turísticos de la zona. Nos dedicamos a mostrar todo lo que se puede vivir, conocer y disfrutar, conectando directamente con prestadores locales de confianza. Busca tu destino, ingresa a nuestras redes sociales. Tenemos las mejores opciones, viví una experiencia única con AR Turismo.'
+};
+
 function getExt(mimetype) {
     const ext = mimetype.split('/')[1];
     return ext === 'jpeg' ? 'jpg' : ext;
@@ -81,5 +93,38 @@ exports.actualizarBanner = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ mensaje: 'Error al actualizar el banner' });
+    }
+};
+
+exports.obtenerTextosInicio = async (req, res) => {
+    try {
+        const configs = await Configuracion.find({ clave: { $in: Object.values(CLAVES_TEXTOS) } });
+        const textos = { ...DEFAULTS_TEXTOS };
+        configs.forEach(c => {
+            const key = Object.keys(CLAVES_TEXTOS).find(k => CLAVES_TEXTOS[k] === c.clave);
+            if (key) textos[key] = c.valor;
+        });
+        res.json(textos);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ mensaje: 'Error al obtener los textos' });
+    }
+};
+
+exports.actualizarTextosInicio = async (req, res) => {
+    try {
+        const { titulo_banner, aboutus_titulo, aboutus_cuerpo } = req.body;
+        const updates = [
+            { clave: CLAVES_TEXTOS.titulo_banner, valor: titulo_banner },
+            { clave: CLAVES_TEXTOS.aboutus_titulo, valor: aboutus_titulo },
+            { clave: CLAVES_TEXTOS.aboutus_cuerpo, valor: aboutus_cuerpo }
+        ];
+        await Promise.all(updates.map(u =>
+            Configuracion.findOneAndUpdate({ clave: u.clave }, { valor: u.valor }, { upsert: true, new: true })
+        ));
+        res.json({ mensaje: 'Textos actualizados correctamente' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ mensaje: 'Error al actualizar los textos' });
     }
 };

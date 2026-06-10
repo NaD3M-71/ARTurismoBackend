@@ -91,6 +91,8 @@ module.exports = function(){
   /**CONFIGURACION */
     router.get('/configuracion/banner', configuracionController.obtenerBanner);
     router.put('/configuracion/banner', auth, configuracionController.subirArchivo, configuracionController.actualizarBanner);
+    router.get('/configuracion/textos-inicio', configuracionController.obtenerTextosInicio);
+    router.put('/configuracion/textos-inicio', auth, configuracionController.actualizarTextosInicio);
 
   /**CONSULTAS */
     // Crear consulta (público - desde el formulario)
