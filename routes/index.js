@@ -8,6 +8,7 @@ const busquedaController = require("../controllers/busquedaController");
 const categoriasController = require("../controllers/categoriasController");
 const configuracionController = require("../controllers/configuracionController");
 const consultasController = require("../controllers/consultasController");
+const institucionesController = require("../controllers/institucionesController");
 const auth = require("../middleware/auth");
 
 module.exports = function(){
@@ -93,6 +94,13 @@ module.exports = function(){
     router.put('/configuracion/banner', auth, configuracionController.subirArchivo, configuracionController.actualizarBanner);
     router.get('/configuracion/textos-inicio', configuracionController.obtenerTextosInicio);
     router.put('/configuracion/textos-inicio', auth, configuracionController.actualizarTextosInicio);
+    router.get('/configuracion/institucional', configuracionController.obtenerInstitucional);
+    router.put('/configuracion/institucional', auth, configuracionController.actualizarInstitucional);
+
+  /**INSTITUCIONES (logos) */
+    router.get('/instituciones', institucionesController.listarInstituciones);
+    router.post('/instituciones', auth, institucionesController.subirArchivo, institucionesController.agregarInstitucion);
+    router.delete('/instituciones/:id', auth, institucionesController.eliminarInstitucion);
 
   /**CONSULTAS */
     // Crear consulta (público - desde el formulario)

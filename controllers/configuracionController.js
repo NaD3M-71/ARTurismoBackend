@@ -18,6 +18,16 @@ const DEFAULTS_TEXTOS = {
     aboutus_cuerpo: 'Somos el gran puente entre los viajeros y los mejores servicios turísticos de la zona. Nos dedicamos a mostrar todo lo que se puede vivir, conocer y disfrutar, conectando directamente con prestadores locales de confianza. Busca tu destino, ingresa a nuestras redes sociales. Tenemos las mejores opciones, viví una experiencia única con AR Turismo.'
 };
 
+const CLAVES_INSTITUCIONAL = {
+    texto: 'texto_institucional',
+    terminos_condiciones: 'texto_institucional_terminos'
+};
+
+const DEFAULTS_INSTITUCIONAL = {
+    texto: 'Trabajamos junto a instituciones que apoyan y potencian el turismo regional, como secretarías de turismo, cámaras y agencias locales. Sumamos su respaldo para ofrecer una experiencia más completa y confiable a quienes nos visitan.',
+    terminos_condiciones: 'El uso de este sitio web implica la aceptación de estos términos y condiciones. ARTurismo actúa como intermediario entre viajeros y prestadores de servicios turísticos, sin asumir responsabilidad directa por la prestación de dichos servicios. La información publicada se actualiza periódicamente, pero recomendamos confirmar los detalles directamente con cada prestador antes de contratar.'
+};
+
 function getExt(mimetype) {
     const ext = mimetype.split('/')[1];
     return ext === 'jpeg' ? 'jpg' : ext;
@@ -126,5 +136,37 @@ exports.actualizarTextosInicio = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ mensaje: 'Error al actualizar los textos' });
+    }
+};
+
+exports.obtenerInstitucional = async (req, res) => {
+    try {
+        const configs = await Configuracion.find({ clave: { $in: Object.values(CLAVES_INSTITUCIONAL) } });
+        const textos = { ...DEFAULTS_INSTITUCIONAL };
+        configs.forEach(c => {
+            const key = Object.keys(CLAVES_INSTITUCIONAL).find(k => CLAVES_INSTITUCIONAL[k] === c.clave);
+            if (key) textos[key] = c.valor;
+        });
+        res.json(textos);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ mensaje: 'Error al obtener el contenido institucional' });
+    }
+};
+
+exports.actualizarInstitucional = async (req, res) => {
+    try {
+        const { texto, terminos_condiciones } = req.body;
+        const updates = [
+            { clave: CLAVES_INSTITUCIONAL.texto, valor: texto },
+            { clave: CLAVES_INSTITUCIONAL.terminos_condiciones, valor: terminos_condiciones }
+        ];
+        await Promise.all(updates.map(u =>
+            Configuracion.findOneAndUpdate({ clave: u.clave }, { valor: u.valor }, { upsert: true, new: true })
+        ));
+        res.json({ mensaje: 'Contenido institucional actualizado correctamente' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ mensaje: 'Error al actualizar el contenido institucional' });
     }
 };
