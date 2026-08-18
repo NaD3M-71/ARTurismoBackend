@@ -56,14 +56,28 @@ const CiudadSchema = new mongoose.Schema({
     required: [true, 'El país es obligatorio'],
   },
   descripcion:{
+    // Contiene HTML generado por el editor Trix (permite saltos de línea y
+    // negrita), por eso el límite es más alto que los 1000 caracteres
+    // "visibles" que se pedían antes.
     type:String,
     required:[true, "Agregue una descripcion"],
     trim:true,
-    maxLength: 1000
+    maxLength: 4000
   },
   descripcioncorta:{
     type:String,
     required:[true, "Agregue una descripcion"],
+    trim:true,
+    maxLength: 100
+  },
+  // Versiones en inglés (opcionales). Si no están cargadas, el front usa la versión en español.
+  descripcionEn:{
+    type:String,
+    trim:true,
+    maxLength: 4000
+  },
+  descripcioncortaEn:{
+    type:String,
     trim:true,
     maxLength: 100
   },

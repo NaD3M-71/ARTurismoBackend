@@ -9,23 +9,35 @@ const CLAVE_BANNER = 'banner_index';
 const CLAVES_TEXTOS = {
     titulo_banner: 'texto_banner_principal',
     aboutus_titulo: 'texto_aboutus_titulo',
-    aboutus_cuerpo: 'texto_aboutus_cuerpo'
+    aboutus_cuerpo: 'texto_aboutus_cuerpo',
+    // Versiones en inglés (opcionales). Si no están cargadas, el front usa la versión en español.
+    titulo_banner_en: 'texto_banner_principal_en',
+    aboutus_titulo_en: 'texto_aboutus_titulo_en',
+    aboutus_cuerpo_en: 'texto_aboutus_cuerpo_en'
 };
 
 const DEFAULTS_TEXTOS = {
     titulo_banner: 'Recorré Argentina de la mejor manera!',
     aboutus_titulo: 'TU AVENTURA EMPIEZA AQUÍ',
-    aboutus_cuerpo: 'Somos el gran puente entre los viajeros y los mejores servicios turísticos de la zona. Nos dedicamos a mostrar todo lo que se puede vivir, conocer y disfrutar, conectando directamente con prestadores locales de confianza. Busca tu destino, ingresa a nuestras redes sociales. Tenemos las mejores opciones, viví una experiencia única con AR Turismo.'
+    aboutus_cuerpo: 'Somos el gran puente entre los viajeros y los mejores servicios turísticos de la zona. Nos dedicamos a mostrar todo lo que se puede vivir, conocer y disfrutar, conectando directamente con prestadores locales de confianza. Busca tu destino, ingresa a nuestras redes sociales. Tenemos las mejores opciones, viví una experiencia única con AR Turismo.',
+    titulo_banner_en: '',
+    aboutus_titulo_en: '',
+    aboutus_cuerpo_en: ''
 };
 
 const CLAVES_INSTITUCIONAL = {
     texto: 'texto_institucional',
-    terminos_condiciones: 'texto_institucional_terminos'
+    terminos_condiciones: 'texto_institucional_terminos',
+    // Versiones en inglés (opcionales). Si no están cargadas, el front usa la versión en español.
+    texto_en: 'texto_institucional_en',
+    terminos_condiciones_en: 'texto_institucional_terminos_en'
 };
 
 const DEFAULTS_INSTITUCIONAL = {
     texto: 'Trabajamos junto a instituciones que apoyan y potencian el turismo regional, como secretarías de turismo, cámaras y agencias locales. Sumamos su respaldo para ofrecer una experiencia más completa y confiable a quienes nos visitan.',
-    terminos_condiciones: 'El uso de este sitio web implica la aceptación de estos términos y condiciones. ARTurismo actúa como intermediario entre viajeros y prestadores de servicios turísticos, sin asumir responsabilidad directa por la prestación de dichos servicios. La información publicada se actualiza periódicamente, pero recomendamos confirmar los detalles directamente con cada prestador antes de contratar.'
+    terminos_condiciones: 'El uso de este sitio web implica la aceptación de estos términos y condiciones. ARTurismo actúa como intermediario entre viajeros y prestadores de servicios turísticos, sin asumir responsabilidad directa por la prestación de dichos servicios. La información publicada se actualiza periódicamente, pero recomendamos confirmar los detalles directamente con cada prestador antes de contratar.',
+    texto_en: '',
+    terminos_condiciones_en: ''
 };
 
 function getExt(mimetype) {
@@ -123,11 +135,14 @@ exports.obtenerTextosInicio = async (req, res) => {
 
 exports.actualizarTextosInicio = async (req, res) => {
     try {
-        const { titulo_banner, aboutus_titulo, aboutus_cuerpo } = req.body;
+        const { titulo_banner, aboutus_titulo, aboutus_cuerpo, titulo_banner_en, aboutus_titulo_en, aboutus_cuerpo_en } = req.body;
         const updates = [
             { clave: CLAVES_TEXTOS.titulo_banner, valor: titulo_banner },
             { clave: CLAVES_TEXTOS.aboutus_titulo, valor: aboutus_titulo },
-            { clave: CLAVES_TEXTOS.aboutus_cuerpo, valor: aboutus_cuerpo }
+            { clave: CLAVES_TEXTOS.aboutus_cuerpo, valor: aboutus_cuerpo },
+            { clave: CLAVES_TEXTOS.titulo_banner_en, valor: titulo_banner_en || '' },
+            { clave: CLAVES_TEXTOS.aboutus_titulo_en, valor: aboutus_titulo_en || '' },
+            { clave: CLAVES_TEXTOS.aboutus_cuerpo_en, valor: aboutus_cuerpo_en || '' }
         ];
         await Promise.all(updates.map(u =>
             Configuracion.findOneAndUpdate({ clave: u.clave }, { valor: u.valor }, { upsert: true, new: true })
@@ -156,10 +171,12 @@ exports.obtenerInstitucional = async (req, res) => {
 
 exports.actualizarInstitucional = async (req, res) => {
     try {
-        const { texto, terminos_condiciones } = req.body;
+        const { texto, terminos_condiciones, texto_en, terminos_condiciones_en } = req.body;
         const updates = [
             { clave: CLAVES_INSTITUCIONAL.texto, valor: texto },
-            { clave: CLAVES_INSTITUCIONAL.terminos_condiciones, valor: terminos_condiciones }
+            { clave: CLAVES_INSTITUCIONAL.terminos_condiciones, valor: terminos_condiciones },
+            { clave: CLAVES_INSTITUCIONAL.texto_en, valor: texto_en || '' },
+            { clave: CLAVES_INSTITUCIONAL.terminos_condiciones_en, valor: terminos_condiciones_en || '' }
         ];
         await Promise.all(updates.map(u =>
             Configuracion.findOneAndUpdate({ clave: u.clave }, { valor: u.valor }, { upsert: true, new: true })

@@ -64,6 +64,16 @@ const clientesSchema = new Schema({
         type: String,
         required: [true, "La descripcion es obligatoria"]
     },
+    // Versiones en inglés (opcionales). Si no están cargadas, el front usa la versión en español.
+    descripcionCortaEn:{
+        type: String
+    },
+    descripcionEn:{
+        type: String
+    },
+    informacionEn:{
+        type: String
+    },
     lat:{
         type: String,
         required: [true,"La latitud es obligatoria"]
