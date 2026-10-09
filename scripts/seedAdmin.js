@@ -4,33 +4,42 @@ require('dotenv').config({ path: 'variables.env' });
 const Usuarios = require('../models/Usuarios');
 
 async function seedAdmin() {
+  const email = process.env.SEED_ADMIN_EMAIL;
+  const password = process.env.SEED_ADMIN_PASSWORD;
+  const nombre = process.env.SEED_ADMIN_NOMBRE || 'Super Administrador';
+
+  if (!email || !password) {
+    console.error('Faltan SEED_ADMIN_EMAIL o SEED_ADMIN_PASSWORD');
+    process.exit(1);
+  }
+
   try {
     await mongoose.connect(process.env.DB_CONNECTION);
     console.log('MongoDB conectado...');
 
-    // Elimina cualquier usuario admin existente con el mismo email para evitar duplicados
-    const resultado = await Usuarios.deleteOne({ email: 'admin@test.com' });
-    if (resultado.deletedCount > 0) {
-      console.log('Usuario anterior eliminado');
+    // Si ya existe un usuario con ese email, no se toca
+    const existente = await Usuarios.findOne({ email: email.toLowerCase().trim() });
+    if (existente) {
+      console.error('Ya existe un usuario con ese email. No se realizaron cambios.');
+      await mongoose.disconnect();
+      process.exit(1);
     }
 
-    // Crea un nuevo admin con credenciales predefinidas
     const nuevoAdmin = new Usuarios({
-      nombre: 'Admin Test',
-      email: 'admin@test.com',
-      password: 'SecurePassword123',
-      rol: 'admin'
+      nombre,
+      email,
+      password,
+      rol: 'superadmin'
     });
 
     await nuevoAdmin.save();
-    console.log('\nAdmin creado exitosamente!');
-    console.log('Email: admin@test.com');
-    console.log('Password: SecurePassword123');
-    console.log('Rol: admin');
+    console.log('Superadmin creado exitosamente');
+    console.log('Email: ' + nuevoAdmin.email);
+    console.log('Rol: ' + nuevoAdmin.rol);
 
     await mongoose.disconnect();
   } catch (error) {
-    console.error('Error al crear el usuario admin:', error);
+    console.error('Error al crear el usuario superadmin:', error);
     process.exit(1);
   }
 }
